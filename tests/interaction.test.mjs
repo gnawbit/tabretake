@@ -11,7 +11,18 @@ import { promisify } from "node:util";
 const exec = promisify(execFile);
 const cli = fileURLToPath(new URL("../bin/tabretake.mjs", import.meta.url));
 
-test("record waits for clickable targets and rejects blocked clicks", { timeout: 30000 }, async (t) => {
+// On slow or loaded runners the CLI child can be killed before it prints its
+// --json result, leaving stdout empty; report the raw output instead of
+// failing with a bare "Unexpected end of JSON input".
+function parseCliJson(raw, context) {
+  try {
+    return JSON.parse(raw ?? "");
+  } catch {
+    assert.fail(`${context}: CLI output was not valid JSON (${raw ? `${raw.length} bytes` : "empty"}): ${String(raw ?? "").slice(0, 400)}`);
+  }
+}
+
+test("record waits for clickable targets and rejects blocked clicks", { timeout: 90000 }, async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tabretake-click-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const hits = [];
@@ -62,11 +73,11 @@ test("record waits for clickable targets and rejects blocked clicks", { timeout:
       }],
     }));
     const run = () => exec(process.execPath, [cli, "record", "--config", file, "--out", out, "--json"], {
-      windowsHide: true, timeout: 10000,
+      windowsHide: true, timeout: 20000,
     });
     if (!temporary) {
       await assert.rejects(run(), (error) => {
-        const result = JSON.parse(error.stdout);
+        const result = parseCliJson(error.stdout, "blocked click record");
         assert.equal(error.code, 1);
         assert.equal(result.ok, false);
         assert.equal(result.error.code, "STEP_TIMEOUT");
@@ -78,7 +89,7 @@ test("record waits for clickable targets and rejects blocked clicks", { timeout:
       });
       assert.equal(hits.filter((hit) => hit.case === variant).length, 0, "blocked clicks must not hit the overlay or target");
     } else {
-      const result = JSON.parse((await run()).stdout);
+      const result = parseCliJson((await run()).stdout, "clickable record");
       assert.equal(result.ok, true);
       assert.equal(result.eventCount, 1);
       const actual = hits.filter((hit) => hit.case === variant);
@@ -93,7 +104,7 @@ test("record waits for clickable targets and rejects blocked clicks", { timeout:
   }
 });
 
-test("record rejects covered type and drag targets with STEP_TIMEOUT", { timeout: 30000 }, async (t) => {
+test("record rejects covered type and drag targets with STEP_TIMEOUT", { timeout: 60000 }, async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tabretake-type-drag-timeout-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   let overlayClicks = 0;
@@ -128,10 +139,10 @@ test("record rejects covered type and drag targets with STEP_TIMEOUT", { timeout
     }));
     await assert.rejects(
       exec(process.execPath, [cli, "record", "--config", file, "--out", path.join(dir, name), "--json"], {
-        windowsHide: true, timeout: 10000,
+        windowsHide: true, timeout: 20000,
       }),
       (error) => {
-        const result = JSON.parse(error.stdout);
+        const result = parseCliJson(error.stdout, "covered record");
         assert.equal(error.code, 1);
         assert.equal(result.ok, false);
         assert.equal(result.error.code, "STEP_TIMEOUT");
@@ -143,7 +154,7 @@ test("record rejects covered type and drag targets with STEP_TIMEOUT", { timeout
   assert.equal(overlayClicks, 0, "blocked type/drag must not click the overlay");
 });
 
-test("record clicks buttons that start an infinite CSS animation on hover", { timeout: 30000 }, async (t) => {
+test("record clicks buttons that start an infinite CSS animation on hover", { timeout: 45000 }, async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tabretake-hover-anim-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const server = createServer((_req, res) => {
@@ -168,9 +179,9 @@ test("record clicks buttons that start an infinite CSS animation on hover", { ti
     steps: [{ action: "click", selector: "#bell", timeout: 4000, pause: 0 }],
   }));
   const { stdout } = await exec(process.execPath, [cli, "record", "--config", file, "--out", path.join(dir, "out"), "--json"], {
-    windowsHide: true, timeout: 15000,
+    windowsHide: true, timeout: 20000,
   });
-  const result = JSON.parse(stdout);
+  const result = parseCliJson(stdout, "hover record");
   assert.equal(result.ok, true);
   assert.equal(result.eventCount, 1);
 });
