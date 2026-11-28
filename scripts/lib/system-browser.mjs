@@ -3,10 +3,28 @@ import path from "node:path";
 
 export const VALID_BROWSERS = new Set(["auto", "chromium", "chrome", "msedge"]);
 
+const PATH_BINARIES = {
+  win32: [
+    { channel: "chrome", name: "chrome.exe" },
+    { channel: "msedge", name: "msedge.exe" },
+  ],
+  darwin: [
+    { channel: "chrome", name: "Google Chrome" },
+    { channel: "msedge", name: "Microsoft Edge" },
+  ],
+  linux: [
+    { channel: "chrome", name: "google-chrome" },
+    { channel: "chrome", name: "google-chrome-stable" },
+    { channel: "msedge", name: "microsoft-edge" },
+    { channel: "msedge", name: "microsoft-edge-stable" },
+  ],
+};
+
 export function findSystemBrowser({
   exists = existsSync,
   platform = process.platform,
   env = process.env,
+  channel,
 } = {}) {
   const candidates = [];
   if (platform === "win32") {
@@ -22,9 +40,20 @@ export function findSystemBrowser({
     for (const bin of ["/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/opt/google/chrome/chrome"]) {
       candidates.push({ channel: "chrome", path: bin });
     }
-    for (const bin of ["/usr/bin/microsoft-edge", "/usr/bin/microsoft-edge-stable"]) {
+    for (const bin of ["/usr/bin/microsoft-edge", "/usr/bin/microsoft-edge-stable", "/opt/microsoft/msedge/msedge"]) {
       candidates.push({ channel: "msedge", path: bin });
     }
   }
-  return candidates.find((candidate) => exists(candidate.path)) || null;
+
+  const pathVar = env.PATH || env.Path || "";
+  const pathDirs = pathVar.split(platform === "win32" ? ";" : ":").map((d) => d.trim()).filter(Boolean);
+  const pathBins = PATH_BINARIES[platform] || PATH_BINARIES.linux;
+  const pathApi = platform === "win32" ? path.win32 : path.posix;
+  for (const dir of pathDirs) {
+    for (const bin of pathBins) {
+      candidates.push({ channel: bin.channel, path: pathApi.join(dir, bin.name) });
+    }
+  }
+
+  return candidates.find((candidate) => (!channel || candidate.channel === channel) && exists(candidate.path)) || null;
 }

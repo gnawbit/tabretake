@@ -37,13 +37,16 @@ function classifyBrowserError(error, mode) {
   return error;
 }
 
+const defaultLaunch = (opts) => chromium.launch(opts);
+
 export async function launchBrowser({
   headless = true,
   proxy,
   browser = "auto",
   scale = 1,
-  launch = (opts) => chromium.launch(opts),
+  launch = defaultLaunch,
   hasBundledChromium = () => existsSync(chromium.executablePath()),
+  systemBrowser = launch === defaultLaunch ? findSystemBrowser : () => null,
 } = {}) {
   const mode = browser || "auto";
   if (!VALID_BROWSERS.has(mode)) {
@@ -69,8 +72,19 @@ export async function launchBrowser({
     }
   };
 
+  const launchChannel = async (channel, errorMode) => {
+    try {
+      return await runLaunch({ ...base, channel }, errorMode);
+    } catch (error) {
+      if (error.code !== "BROWSER_MISSING") throw error;
+      const detected = systemBrowser({ channel });
+      if (!detected?.path) throw error;
+      return runLaunch({ ...base, executablePath: detected.path }, errorMode);
+    }
+  };
+
   if (mode === "chrome" || mode === "msedge") {
-    return runLaunch({ ...base, channel: mode }, mode);
+    return launchChannel(mode, mode);
   }
 
   if (mode === "chromium" || hasBundledChromium()) {
@@ -81,7 +95,7 @@ export async function launchBrowser({
   let fallbackError = null;
   for (const channel of ["chrome", "msedge"]) {
     try {
-      return await runLaunch({ ...base, channel }, mode);
+      return await launchChannel(channel, mode);
     } catch (error) {
       if (error.code === "BROWSER_DEPS_MISSING") depsError ||= error;
       else if (error.code !== "BROWSER_MISSING") fallbackError ||= error;
@@ -263,13 +277,17 @@ export async function resolveLocator(page, step) {
   throw Object.assign(new Error("Could not find a visible element for this step."), { code: "TARGET_NOT_FOUND" });
 }
 
-export async function moveAndClick(page, locator, pause = 700, timeout = 20000) {
+function createDeadline(timeout, kind) {
   const deadline = Date.now() + timeout;
-  const remaining = () => {
+  return () => {
     const ms = deadline - Date.now();
-    if (ms <= 0) throw new errors.TimeoutError("Timed out waiting for an actionable click target.");
+    if (ms <= 0) throw new errors.TimeoutError(`Timed out waiting for an actionable ${kind} target.`);
     return ms;
   };
+}
+
+export async function moveAndClick(page, locator, pause = 700, timeout = 20000) {
+  const remaining = createDeadline(timeout, "click");
 
   // Wait before measuring: loading overlays or disabled controls may also move.
   await locator.click({ trial: true, timeout: remaining() });
@@ -282,35 +300,64 @@ export async function moveAndClick(page, locator, pause = 700, timeout = 20000) 
   await page.mouse.move(x, y, { steps: 18 });
   await page.waitForTimeout(120);
   // Recheck actionability at the actual click; never click an overlay by position.
-  await locator.click({ delay: 70, timeout: remaining() });
+  try {
+    await locator.click({ delay: 70, timeout: Math.min(remaining(), 1500) });
+  } catch (error) {
+    const unstableOnly = error?.name === "TimeoutError" && /element is not stable/i.test(String(error.message || ""));
+    if (!unstableOnly) {
+      if (error?.name === "TimeoutError" && remaining() > 0) {
+        await locator.click({ delay: 70, timeout: remaining() });
+      } else {
+        throw error;
+      }
+    } else {
+      // Hovering can trigger an infinite CSS animation (e.g. shake/pulse on :hover);
+      // allow the click only if the target is still enabled and unobstructed at its center.
+      const safe = await locator.evaluate((el) => {
+        if (!el.isConnected || el.matches(":disabled") || el.getAttribute("aria-disabled") === "true") return false;
+        const r = el.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) return false;
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return Boolean(top && (el === top || el.contains(top) || top.contains(el)));
+      }).catch(() => false);
+      if (!safe) throw error;
+      await locator.click({ force: true, delay: 70, timeout: remaining() });
+    }
+  }
   await page.waitForTimeout(pause);
 
   return { x, y };
 }
 
-export async function clickAndType(page, locator, text, pause = 500) {
-  await locator.scrollIntoViewIfNeeded();
-  const box = await locator.boundingBox();
+export async function clickAndType(page, locator, text, pause = 500, timeout = 20000) {
+  const remaining = createDeadline(timeout, "input");
+
+  await locator.click({ trial: true, timeout: remaining() });
+  const box = await locator.boundingBox({ timeout: remaining() });
   if (!box) throw new Error("Element has no bounding box");
 
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
 
   await page.mouse.move(x, y, { steps: 16 });
-  await page.mouse.down();
-  await page.mouse.up();
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(120);
+  await locator.click({ timeout: remaining() });
+  await page.waitForTimeout(80);
 
-  await locator.fill("");
+  await locator.fill("", { timeout: remaining() });
   await page.keyboard.type(text, { delay: 45 });
   await page.waitForTimeout(pause);
 
   return { x, y };
 }
 
-export async function dragBy(page, locator, dx, dy = 0, steps = 24, pause = 600) {
-  await locator.scrollIntoViewIfNeeded();
-  const box = await locator.boundingBox();
+export async function dragBy(page, locator, dx, dy = 0, steps = 24, pause = 600, timeout = 20000) {
+  const remaining = createDeadline(timeout, "drag");
+
+  await locator.waitFor({ state: "visible", timeout: remaining() });
+  await locator.scrollIntoViewIfNeeded({ timeout: remaining() });
+  await locator.hover({ trial: true, timeout: remaining() });
+  const box = await locator.boundingBox({ timeout: remaining() });
   if (!box) throw new Error("Element has no bounding box");
 
   const x = box.x + box.width / 2;
@@ -331,12 +378,7 @@ export async function dragBy(page, locator, dx, dy = 0, steps = 24, pause = 600)
 }
 
 export async function selectOption(page, locator, value, pause = 500, timeout = 20000) {
-  const deadline = Date.now() + timeout;
-  const remaining = () => {
-    const ms = deadline - Date.now();
-    if (ms <= 0) throw new errors.TimeoutError("Timed out waiting for an actionable select target.");
-    return ms;
-  };
+  const remaining = createDeadline(timeout, "select");
   await locator.waitFor({ state: "visible", timeout: remaining() });
   await locator.scrollIntoViewIfNeeded({ timeout: remaining() });
   const box = await locator.boundingBox({ timeout: remaining() });
@@ -366,9 +408,13 @@ export async function selectOption(page, locator, value, pause = 500, timeout = 
   return { x, y };
 }
 
-export async function hover(page, locator, pause = 500) {
-  await locator.scrollIntoViewIfNeeded();
-  const box = await locator.boundingBox();
+export async function hover(page, locator, pause = 500, timeout = 20000) {
+  const remaining = createDeadline(timeout, "hover");
+
+  await locator.waitFor({ state: "visible", timeout: remaining() });
+  await locator.scrollIntoViewIfNeeded({ timeout: remaining() });
+  await locator.hover({ trial: true, timeout: remaining() });
+  const box = await locator.boundingBox({ timeout: remaining() });
   if (!box) throw new Error("Element has no bounding box");
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
