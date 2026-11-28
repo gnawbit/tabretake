@@ -37,13 +37,16 @@ function classifyBrowserError(error, mode) {
   return error;
 }
 
+const defaultLaunch = (opts) => chromium.launch(opts);
+
 export async function launchBrowser({
   headless = true,
   proxy,
   browser = "auto",
   scale = 1,
-  launch = (opts) => chromium.launch(opts),
+  launch = defaultLaunch,
   hasBundledChromium = () => existsSync(chromium.executablePath()),
+  systemBrowser = launch === defaultLaunch ? findSystemBrowser : () => null,
 } = {}) {
   const mode = browser || "auto";
   if (!VALID_BROWSERS.has(mode)) {
@@ -69,8 +72,19 @@ export async function launchBrowser({
     }
   };
 
+  const launchChannel = async (channel, errorMode) => {
+    try {
+      return await runLaunch({ ...base, channel }, errorMode);
+    } catch (error) {
+      if (error.code !== "BROWSER_MISSING") throw error;
+      const detected = systemBrowser({ channel });
+      if (!detected?.path) throw error;
+      return runLaunch({ ...base, executablePath: detected.path }, errorMode);
+    }
+  };
+
   if (mode === "chrome" || mode === "msedge") {
-    return runLaunch({ ...base, channel: mode }, mode);
+    return launchChannel(mode, mode);
   }
 
   if (mode === "chromium" || hasBundledChromium()) {
@@ -81,7 +95,7 @@ export async function launchBrowser({
   let fallbackError = null;
   for (const channel of ["chrome", "msedge"]) {
     try {
-      return await runLaunch({ ...base, channel }, mode);
+      return await launchChannel(channel, mode);
     } catch (error) {
       if (error.code === "BROWSER_DEPS_MISSING") depsError ||= error;
       else if (error.code !== "BROWSER_MISSING") fallbackError ||= error;

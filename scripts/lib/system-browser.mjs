@@ -24,6 +24,7 @@ export function findSystemBrowser({
   exists = existsSync,
   platform = process.platform,
   env = process.env,
+  channel,
 } = {}) {
   const candidates = [];
   if (platform === "win32") {
@@ -39,7 +40,7 @@ export function findSystemBrowser({
     for (const bin of ["/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/opt/google/chrome/chrome"]) {
       candidates.push({ channel: "chrome", path: bin });
     }
-    for (const bin of ["/usr/bin/microsoft-edge", "/usr/bin/microsoft-edge-stable"]) {
+    for (const bin of ["/usr/bin/microsoft-edge", "/usr/bin/microsoft-edge-stable", "/opt/microsoft/msedge/msedge"]) {
       candidates.push({ channel: "msedge", path: bin });
     }
   }
@@ -54,5 +55,5 @@ export function findSystemBrowser({
     }
   }
 
-  return candidates.find((candidate) => exists(candidate.path)) || null;
+  return candidates.find((candidate) => (!channel || candidate.channel === channel) && exists(candidate.path)) || null;
 }

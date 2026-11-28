@@ -235,6 +235,61 @@ test("findSystemBrowser detects installed Chrome or Edge paths across platforms"
     exists: (p) => p === "D:\\Portable\\ChromeBin\\chrome.exe",
   });
   assert.deepEqual(fromPath, { channel: "chrome", path: "D:\\Portable\\ChromeBin\\chrome.exe" });
+
+  const edgeOnly = findSystemBrowser({
+    platform: "linux",
+    env: { PATH: "/custom/bin" },
+    exists: (p) => p === "/custom/bin/google-chrome" || p === "/custom/bin/microsoft-edge",
+    channel: "msedge",
+  });
+  assert.deepEqual(edgeOnly, { channel: "msedge", path: "/custom/bin/microsoft-edge" });
+});
+
+test("launchBrowser falls back to detected system executablePath when Playwright channel misses", async () => {
+  const attempts = [];
+  const fakeBrowser = { close: async () => {} };
+  const result = await launchBrowser({
+    browser: "auto",
+    hasBundledChromium: () => false,
+    systemBrowser: ({ channel }) => (channel === "chrome" ? { channel: "chrome", path: "/custom/bin/google-chrome" } : null),
+    launch: async (opts) => {
+      attempts.push({ channel: opts.channel || null, executablePath: opts.executablePath || null });
+      if (opts.executablePath === "/custom/bin/google-chrome") return fakeBrowser;
+      throw new Error(`Chromium distribution '${opts.channel}' is not found at /opt/google/chrome/chrome`);
+    },
+  });
+  assert.equal(result, fakeBrowser);
+  assert.deepEqual(attempts, [
+    { channel: "chrome", executablePath: null },
+    { channel: null, executablePath: "/custom/bin/google-chrome" },
+  ]);
+
+  const explicitAttempts = [];
+  const explicit = await launchBrowser({
+    browser: "msedge",
+    systemBrowser: ({ channel }) => (channel === "msedge" ? { channel: "msedge", path: "/custom/bin/microsoft-edge" } : null),
+    launch: async (opts) => {
+      explicitAttempts.push({ channel: opts.channel || null, executablePath: opts.executablePath || null });
+      if (opts.executablePath === "/custom/bin/microsoft-edge") return fakeBrowser;
+      throw new Error("Chromium distribution 'msedge' is not found");
+    },
+  });
+  assert.equal(explicit, fakeBrowser);
+  assert.deepEqual(explicitAttempts, [
+    { channel: "msedge", executablePath: null },
+    { channel: null, executablePath: "/custom/bin/microsoft-edge" },
+  ]);
+
+  await assert.rejects(
+    launchBrowser({
+      browser: "chrome",
+      systemBrowser: () => ({ channel: "chrome", path: "/custom/bin/google-chrome" }),
+      launch: async () => {
+        throw new Error("error while loading shared libraries: libnss3.so");
+      },
+    }),
+    (err) => err.code === "BROWSER_DEPS_MISSING",
+  );
 });
 
 test("openRecordedPage seeds missing Playwright ffmpeg from bundled ffmpeg and retries", async (t) => {
