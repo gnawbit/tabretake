@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.3 — 2026-11-28
+
+- Fall back to `findSystemBrowser` `executablePath` in `launchBrowser` when Playwright's fixed channel paths miss (including `PATH`-only Chrome/Chromium/Edge installs), keeping `doctor` and browser launches aligned.
+- Render landscape and portrait layouts plus caption PNG layers concurrently, and bypass `2x` `zoompan` on static no-zoom timelines.
+- Harden `init --auto` and Playwright interactions: skip `range`/disabled/covered/external controls, fill type-appropriate sample values (`email`, `url`, `number`), handle `:hover` CSS animation stability timeouts safely, align `videoOffset` timing, clamp vertical `phone` bezels against multiline titles, and guard `mark` streaming/concurrent renders.
+- Add `fc-match` and `WINDIR` font discovery fallbacks, sync site/playbook showcase star counts, and add automated docs/version/root-README consistency tests.
+
 ## 0.5.2 — 2026-11-27
 
 - Surface underlying Playwright error lines in `tabretake setup` (`CHROMIUM_SETUP_FAILED`), redact URL credentials, add actionable `Hint:` recovery guidance (including `PLAYWRIGHT_DOWNLOAD_HOST` mirrors and local Chrome/Edge fallback), and support `--proxy` and `--json`.

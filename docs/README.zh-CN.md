@@ -12,7 +12,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/gnawbit/tabretake?style=social)](https://github.com/gnawbit/tabretake/stargazers)
 [![Listed in Awesome Agent Skills](https://sagargupta.online/awesome-skills/badge.svg)](https://github.com/Sagargupta16/awesome-skills)
 
-[收录于阮一峰《科技爱好者周刊》第 421 期（2026-11-27）](https://www.ruanyifeng.com/blog/2026/11/weekly-issue-421.html)
+*[收录于阮一峰《科技爱好者周刊》第 421 期（2026-11-27）](https://www.ruanyifeng.com/blog/2026/11/weekly-issue-421.html)*
 
 **自动化生成 Web 应用演示。从此告别手动录屏与繁琐剪辑。**
 
@@ -50,7 +50,7 @@
 ### 🚀 零等待极速体验（自动适配本机 Chrome/Edge）
 
 ```bash
-npm install --global @gnawbit/tabretake@0.5.2
+npm install --global @gnawbit/tabretake@0.5.3
 tabretake demo --preset daylight
 ```
 
@@ -104,7 +104,7 @@ tabretake demo --preset daylight
 从 npm 安装 CLI。
 
 ```bash
-npm install --global @gnawbit/tabretake@0.5.2
+npm install --global @gnawbit/tabretake@0.5.3
 tabretake demo
 ```
 
@@ -141,7 +141,7 @@ node bin/tabretake.mjs doctor
 CLI 环境就绪后，可安装 agent 工作流：
 
 ```bash
-npx skills@1.9.0 add "https://github.com/gnawbit/tabretake.git#v0.5.2" --skill tabretake
+npx skills@1.9.0 add "https://github.com/gnawbit/tabretake.git#v0.5.3" --skill tabretake
 ```
 
 在目标项目中运行，可加 `--agent codex`、`--agent claude-code` 或 `--agent cursor`
@@ -151,7 +151,7 @@ npx skills@1.9.0 add "https://github.com/gnawbit/tabretake.git#v0.5.2" --skill t
 Claude Code 也可以通过插件安装（命令行版本需 2.1.292+）：
 
 ```bash
-claude plugin install tabretake --marketplace "gnawbit/tabretake#v0.5.2"
+claude plugin install tabretake --marketplace "gnawbit/tabretake#v0.5.3"
 ```
 
 两种工作流安装方式任选其一；插件仍需先安装上述 TabRetake 运行环境。

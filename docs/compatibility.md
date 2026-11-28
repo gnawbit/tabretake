@@ -9,6 +9,9 @@ TabRetake preserves story JSON compatibility across releases. This guide records
 
 ## Behavioral Changes by Release
 
+* **v0.5.3**:
+  * `launchBrowser` reuses `findSystemBrowser` (`PATH` and Linux `/usr/bin/*` fallbacks) via `executablePath` when Playwright's fixed channel paths miss, matching `doctor` diagnostics.
+  * `init --auto` skips `range`/disabled/covered/external controls and supplies valid sample values for `email`/`url`/`number` inputs; `moveAndClick` safely handles buttons with infinite `:hover` CSS animations.
 * **v0.5.2**:
   * `tabretake setup` surfaces underlying Playwright download/permission failures with `CHROMIUM_SETUP_FAILED` and `Hint:` guidance, and adds `--proxy` and `--json`.
   * `tabretake demo` defaults to ephemeral port `0` instead of `4173` to avoid port collisions with local preview servers.

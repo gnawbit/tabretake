@@ -12,7 +12,7 @@ English · [简体中文](docs/README.zh-CN.md)
 [![GitHub stars](https://img.shields.io/github/stars/gnawbit/tabretake?style=social)](https://github.com/gnawbit/tabretake/stargazers)
 [![Listed in Awesome Agent Skills](https://sagargupta.online/awesome-skills/badge.svg)](https://github.com/Sagargupta16/awesome-skills)
 
-[Featured in Ruan Yifeng's Technology Weekly, Issue 421 (Nov 27, 2026)](https://www.ruanyifeng.com/blog/2026/11/weekly-issue-421.html)
+*[Featured in Ruan Yifeng's Technology Weekly, Issue 421 (Nov 27, 2026)](https://www.ruanyifeng.com/blog/2026/11/weekly-issue-421.html)*
 
 **Automate your web app demos. Never manually record and edit a screen again.**
 
@@ -51,7 +51,7 @@ Already have a screen recording? Supply timestamp marks to
 ### 🚀 Quick Taste (Zero-Wait with Local Chrome/Edge)
 
 ```bash
-npm install --global @gnawbit/tabretake@0.5.2
+npm install --global @gnawbit/tabretake@0.5.3
 tabretake demo --preset daylight
 ```
 
@@ -106,7 +106,7 @@ edit and run again after a release.
 Install the CLI from npm.
 
 ```bash
-npm install --global @gnawbit/tabretake@0.5.2
+npm install --global @gnawbit/tabretake@0.5.3
 tabretake demo
 ```
 
@@ -144,7 +144,7 @@ replace `node bin/tabretake.mjs` with `tabretake`.
 To add the agent workflow after setting up the CLI:
 
 ```bash
-npx skills@1.9.0 add "https://github.com/gnawbit/tabretake.git#v0.5.2" --skill tabretake
+npx skills@1.9.0 add "https://github.com/gnawbit/tabretake.git#v0.5.3" --skill tabretake
 ```
 
 Run this in the target project; add `--agent codex`, `--agent claude-code` or
@@ -155,7 +155,7 @@ or a source checkout. Install the CLI and Skill from the same revision.
 Claude Code users can install the plugin instead (CLI 2.1.292+):
 
 ```bash
-claude plugin install tabretake --marketplace "gnawbit/tabretake#v0.5.2"
+claude plugin install tabretake --marketplace "gnawbit/tabretake#v0.5.3"
 ```
 
 Install the workflow through one of these routes; the plugin still needs the
