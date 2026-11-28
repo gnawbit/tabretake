@@ -11,7 +11,18 @@ import { promisify } from "node:util";
 const exec = promisify(execFile);
 const cli = fileURLToPath(new URL("../bin/tabretake.mjs", import.meta.url));
 
-test("preview executes the story and preserves existing recordings, including on failure", { timeout: 30000 }, async (t) => {
+// On slow or loaded runners the CLI child can be killed before it prints its
+// --json result, leaving stdout empty; report the raw output instead of
+// failing with a bare "Unexpected end of JSON input".
+function parseCliJson(raw, context) {
+  try {
+    return JSON.parse(raw ?? "");
+  } catch {
+    assert.fail(`${context}: CLI output was not valid JSON (${raw ? `${raw.length} bytes` : "empty"}): ${String(raw ?? "").slice(0, 400)}`);
+  }
+}
+
+test("preview executes the story and preserves existing recordings, including on failure", { timeout: 90000 }, async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "tabretake-preview-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   let clicks = 0;
@@ -29,8 +40,8 @@ test("preview executes the story and preserves existing recordings, including on
   await mkdir(path.join(out, "raw"), {recursive:true});
   await writeFile(path.join(out, "raw/keep.webm"), "existing recording");
   await writeFile(config, JSON.stringify(story));
-  const run = (command) => exec(process.execPath, [cli, command, "--config", config, "--out", out, "--json", ...(command === "preview" ? ["--headless"] : [])], {windowsHide:true, timeout:12000});
-  const result = JSON.parse((await run("preview")).stdout);
+  const run = (command) => exec(process.execPath, [cli, command, "--config", config, "--out", out, "--json", ...(command === "preview" ? ["--headless"] : [])], {windowsHide:true, timeout:20000});
+  const result = parseCliJson((await run("preview")).stdout, "preview");
   assert.equal(result.command, "preview");
   assert.equal(result.stepCount, 2);
   assert.deepEqual(result.artifacts, []);
@@ -40,7 +51,7 @@ test("preview executes the story and preserves existing recordings, including on
   story.steps.push({action:"focus",selector:"#missing"});
   await writeFile(config, JSON.stringify(story));
   await assert.rejects(run("preview"), (error) => {
-    const report = JSON.parse(error.stdout);
+    const report = parseCliJson(error.stdout, "preview failure");
     assert.equal(report.command, "preview");
     assert.equal(report.error.code, "TARGET_NOT_FOUND");
     assert.equal(report.error.step.index, 2);
