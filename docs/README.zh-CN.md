@@ -12,8 +12,6 @@
 [![GitHub stars](https://img.shields.io/github/stars/gnawbit/tabretake?style=social)](https://github.com/gnawbit/tabretake/stargazers)
 [![Listed in Awesome Agent Skills](https://sagargupta.online/awesome-skills/badge.svg)](https://github.com/Sagargupta16/awesome-skills)
 
-
-
 [收录于阮一峰《科技爱好者周刊》第 421 期（2026-11-27）](https://www.ruanyifeng.com/blog/2026/11/weekly-issue-421.html)
 
 **自动化生成 Web 应用演示。从此告别手动录屏与繁琐剪辑。**
