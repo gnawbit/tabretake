@@ -12,6 +12,8 @@ English · [简体中文](docs/README.zh-CN.md)
 [![GitHub stars](https://img.shields.io/github/stars/gnawbit/tabretake?style=social)](https://github.com/gnawbit/tabretake/stargazers)
 [![Listed in Awesome Agent Skills](https://sagargupta.online/awesome-skills/badge.svg)](https://github.com/Sagargupta16/awesome-skills)
 
+[Featured in Ruan Yifeng's Technology Weekly, Issue 421 (Nov 27, 2026)](https://www.ruanyifeng.com/blog/2026/11/weekly-issue-421.html)
+
 **Automate your web app demos. Never manually record and edit a screen again.**
 
 Turn editable JSON steps or AI Agent instructions into crisp **16:9 README GIFs** and **9:16 portrait launch videos** — complete with smooth click zooms, cursor ripples, and unoccluded bottom captions. When your UI changes, re-run with one command.
